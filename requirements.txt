@@ -1,0 +1,5 @@
+rawpy
+numpy
+PyExifTool # Requires exiftool to be in PATH; See also the README.md in data/
+scipy
+matplotlib

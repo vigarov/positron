@@ -37,3 +37,6 @@ venv.bak/
 
 # mkdocs documentation
 /site
+
+.local_tests/
+data/
