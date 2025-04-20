@@ -3,3 +3,8 @@ numpy
 PyExifTool # Requires exiftool to be in PATH; See also the README.md in data/
 scipy
 matplotlib
+opencv-python
+opencv-contrib-python  # For advanced white balance algorithms
+tqdm
+pillow
+scikit-image
