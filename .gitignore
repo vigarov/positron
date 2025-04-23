@@ -39,4 +39,8 @@ venv.bak/
 /site
 
 .local_tests/
-data/
+data/checkpoints/
+data/prepro/
+data/raw/
+data/prepro/
+data/baselines/
