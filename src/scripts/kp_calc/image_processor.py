@@ -37,7 +37,13 @@ def load_current_set(app):
         app.set_var.set(str(app.current_set_id))
         
         if not hasattr(app, 'all_rectangles_drawn') or not app.all_rectangles_drawn:
-            app.rectangles = {0: None, 1: None, 2: None}
+            if hasattr(app, 'multiple_rectangles') and app.multiple_rectangles:
+                app.rectangles = {0: [], 1: [], 2: []}
+                app.all_rects_drawn_on_da = False
+                app.multi_rect_placement_mode = False
+                app.rect_offsets = []
+            else:
+                app.rectangles = {0: None, 1: None, 2: None}
             
             if hasattr(app, 'all_rectangles_drawn'):
                 app.all_rectangles_drawn = False
@@ -46,7 +52,10 @@ def load_current_set(app):
         
         load_current_image(app)
         
-        app.status_var.set(f"Loaded image set {app.current_set_id}. Draw rectangle on the Digital (DA) image.")
+        if hasattr(app, 'multiple_rectangles') and app.multiple_rectangles:
+            app.status_var.set(f"Loaded image set {app.current_set_id}. Draw multiple rectangles on the Digital (DA) image.")
+        else:
+            app.status_var.set(f"Loaded image set {app.current_set_id}. Draw rectangle on the Digital (DA) image.")
         
         if hasattr(app, 'update_ui_state'):
             app.update_ui_state()
@@ -106,14 +115,26 @@ def load_current_image(app):
         app.img_x_offset = x_offset
         app.img_y_offset = y_offset
         
-        # Redraw rectangle if it exists for this image
-        if app.rectangles[app.current_img_idx] is not None:
-            x1, y1, x2, y2 = app.rectangles[app.current_img_idx]
-            x1 = int(x1 * app.scale_factor) + app.img_x_offset
-            y1 = int(y1 * app.scale_factor) + app.img_y_offset
-            x2 = int(x2 * app.scale_factor) + app.img_x_offset
-            y2 = int(y2 * app.scale_factor) + app.img_y_offset
-            app.canvas.create_rectangle(x1, y1, x2, y2, outline="red", width=2, tags="rect")
+        # Redraw rectangle(s) if they exist for this image
+        if hasattr(app, 'multiple_rectangles') and app.multiple_rectangles:
+            # For multiple rectangles mode, redraw all rectangles
+            if app.rectangles[app.current_img_idx] and len(app.rectangles[app.current_img_idx]) > 0:
+                for rect in app.rectangles[app.current_img_idx]:
+                    x1, y1, x2, y2 = rect
+                    x1 = int(x1 * app.scale_factor) + app.img_x_offset
+                    y1 = int(y1 * app.scale_factor) + app.img_y_offset
+                    x2 = int(x2 * app.scale_factor) + app.img_x_offset
+                    y2 = int(y2 * app.scale_factor) + app.img_y_offset
+                    app.canvas.create_rectangle(x1, y1, x2, y2, outline="red", width=2, tags="rect")
+        else:
+            # For single rectangle mode
+            if app.rectangles[app.current_img_idx] is not None:
+                x1, y1, x2, y2 = app.rectangles[app.current_img_idx]
+                x1 = int(x1 * app.scale_factor) + app.img_x_offset
+                y1 = int(y1 * app.scale_factor) + app.img_y_offset
+                x2 = int(x2 * app.scale_factor) + app.img_x_offset
+                y2 = int(y2 * app.scale_factor) + app.img_y_offset
+                app.canvas.create_rectangle(x1, y1, x2, y2, outline="red", width=2, tags="rect")
         
     except Exception as e:
         app.status_var.set(f"Error loading image: {str(e)}")

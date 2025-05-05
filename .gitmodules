@@ -1,0 +1,6 @@
+[submodule "src/color_consistency/quasi_unsupervised_cc"]
+	path = src/color_consistency/quasi_unsupervised_cc
+	url = https://github.com/claudio-unipv/quasi-unsupervised-cc
+[submodule ".\\src\\color_consistency\\liteispnet"]
+	path = .\\src\\color_consistency\\liteispnet
+	url = https://github.com/cszhilu1998/RAW-to-sRGB.git

@@ -39,10 +39,26 @@ def setup_ui(app):
                                     values=sources, width=12, state="disabled")
     app.source_combo.pack(side=tk.LEFT, padx=5)
     
+    # Add buttons specific to multiple rectangle mode
+    if app.multiple_rectangles:
+        app.undo_rect_btn = ttk.Button(app.control_panel, text="Undo Previous", 
+                                      command=app.undo_last_rectangle)
+        
+        app.next_source_btn = ttk.Button(app.control_panel, text="Next Source", 
+                                        command=app.next_source)
+    
     app.clear_rect_btn = ttk.Button(app.control_panel, text="Clear Rectangle", 
                                    command=app.clear_rectangle)
-    app.extract_pixels_btn = ttk.Button(app.control_panel, text="Extract Pixels", 
-                                       command=app.extract_pixels)
+    
+    # Create different button text and action based on data processing mode
+    if hasattr(app, 'data_processing_path') and app.data_processing_path:
+        app.extract_pixels_btn = ttk.Button(app.control_panel, text="Next", 
+                                          command=app.process_and_save_data)
+        app.return_key_handler = lambda event: app.process_and_save_data()
+    else:
+        app.extract_pixels_btn = ttk.Button(app.control_panel, text="Extract Pixels", 
+                                          command=app.extract_pixels)
+    
     app.save_results_btn = ttk.Button(app.control_panel, text="Save Results", 
                                      command=app.save_results)
     
@@ -85,6 +101,10 @@ def setup_ui(app):
     
     app.all_rectangles_drawn = False
     app.pixels_extracted = False
+    
+    # Update initial UI state for multiple rectangle mode
+    if app.multiple_rectangles:
+        app.status_var.set("Ready. Draw multiple rectangles on the Digital (DA) image.")
     
     app.results_tabs.pack_forget()
 
