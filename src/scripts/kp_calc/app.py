@@ -49,6 +49,15 @@ class RectangleDrawingApp:
         self.multi_rect_placement_mode = False
         self.rect_offsets = []  # [(dx1, dy1, dx2, dy2), ...] relative to first rectangle
         
+        # For improved rectangle positioning
+        self.adjusted_rectangles = {1: [], 2: []}  # User adjusted rectangles for each source
+        self.expected_positions = {1: [], 2: []}   # Expected positions based on DA rectangles
+        self.scale_factors = {1: (1.0, 1.0), 2: (1.0, 1.0)}  # (x_scale, y_scale) for each source
+        self.translations = {1: (0, 0), 2: (0, 0)}  # (x_trans, y_trans) for each source
+        self.current_rect_idx = 0  # Index of rectangle being positioned
+        self.placing_first_rectangle = False  # Flag for placing the first rectangle
+        self.is_rectangle_placed = False  # Flag to indicate if the current rectangle is placed
+        
         self.scale_factor = 1.0
         
         self.current_pixel_data = None
@@ -146,6 +155,9 @@ class RectangleDrawingApp:
         
         self.all_rectangles_drawn = all_drawn
         
+        # Get current source
+        current_source = self.source_var.get()
+        
         # Update Set combobox state
         if self.multiple_rectangles:
             if len(self.rectangles[0]) > 0 and not self.pixels_extracted:
@@ -189,24 +201,44 @@ class RectangleDrawingApp:
                 if hasattr(self, 'undo_rect_btn'):
                     self.undo_rect_btn.pack_forget()
             
-            # Next Source button
-            show_next_source = False
-            current_source = self.source_var.get()
-            if current_source == "Digital (DA)" and len(self.rectangles[0]) > 0 and not self.pixels_extracted:
-                show_next_source = True
-            elif current_source == "Negative 1" and len(self.rectangles[1]) > 0 and not self.pixels_extracted:
-                show_next_source = True
-            elif current_source == "Negative 2" and not self.all_rectangles_drawn and not self.pixels_extracted:
-                show_next_source = True
-                
-            if show_next_source:
-                self.next_source_btn.pack(side=tk.LEFT, padx=5)
-            else:
+            # Always hide Next Source button immediately when on Negative 2
+            if current_source == "Negative 2":
                 if hasattr(self, 'next_source_btn'):
+                    self.next_source_btn.pack_forget()
+                # Skip the rest of the Next Source button logic
+            else:
+                # Next Source button logic for other sources
+                show_next_source = False
+                
+                # Show the Next Source button only when:
+                # 1. We're on Digital (DA) and have drawn at least one rectangle, or
+                # 2. We're on Negative 1 and have at least positioned the first rectangle
+                if not self.pixels_extracted:
+                    if current_source == "Digital (DA)" and len(self.rectangles[0]) > 0:
+                        show_next_source = True
+                    elif current_source == "Negative 1" and (
+                        hasattr(self, 'adjusted_rectangles') and 
+                        1 in self.adjusted_rectangles and 
+                        len(self.adjusted_rectangles[1]) > 0
+                    ):
+                        show_next_source = True
+                
+                if show_next_source:
+                    self.next_source_btn.pack(side=tk.LEFT, padx=5)
+                else:
+                    # First, make sure the button is created if it doesn't exist yet
+                    if not hasattr(self, 'next_source_btn'):
+                        self.next_source_btn = ttk.Button(self.control_panel, text="Next Source", 
+                                                       command=self.next_source)
                     self.next_source_btn.pack_forget()
         
         # Extract Pixels button (shows for both modes when appropriate)
-        if all_drawn and not self.pixels_extracted:
+        # For Negative 2, show the button as soon as at least one rectangle is positioned
+        if ((all_drawn and not self.pixels_extracted) or 
+            (current_source == "Negative 2" and 
+             self.multiple_rectangles and 
+             len(self.rectangles[2]) > 0 and 
+             not self.pixels_extracted)):
             self.extract_pixels_btn.pack(side=tk.LEFT, padx=5)
             # If we're in data processing mode, bind the Return key when the Next button is visible
             if hasattr(self, 'data_processing_path') and self.data_processing_path and hasattr(self, 'return_key_handler'):
@@ -290,7 +322,7 @@ class RectangleDrawingApp:
             if self.multiple_rectangles:
                 # If we're in multi-rectangle placement mode (for sources 1 and 2)
                 if self.multi_rect_placement_mode and self.current_img_idx != 0:
-                    # No need to delete existing rectangles in placement mode
+                    # For the improved positioning system, don't delete existing rectangles
                     pass
                 else:
                     # When drawing new rectangles on source 0, don't delete existing ones
@@ -309,10 +341,33 @@ class RectangleDrawingApp:
                     self.rect_height = y2 - y1
                     self.rect_placement_mode = True
             elif self.multi_rect_placement_mode and self.current_img_idx != 0:
-                # For multiple rectangle mode placement on sources 1 and 2
-                # We'll use the first rectangle's position as reference 
-                # and draw all rectangles with their relative offsets
-                pass
+                # For improved positioning, we'll draw a preview of the current rectangle
+                if self.placing_first_rectangle or not self.is_rectangle_placed:
+                    # For the first rectangle, or when placing a new one
+                    orig_rect = self.rectangles[0][self.current_rect_idx]
+                    width = orig_rect[2] - orig_rect[0]
+                    height = orig_rect[3] - orig_rect[1]
+                    
+                    # Convert to canvas coordinates
+                    canvas_width = int(width * self.scale_factor)
+                    canvas_height = int(height * self.scale_factor)
+                    
+                    # Center the rectangle at the mouse position
+                    half_width = canvas_width // 2
+                    half_height = canvas_height // 2
+                    
+                    x1 = event.x - half_width
+                    y1 = event.y - half_height
+                    x2 = x1 + canvas_width
+                    y2 = y1 + canvas_height
+                    
+                    self.canvas.create_rectangle(
+                        x1, y1, x2, y2,
+                        outline="blue", width=2, tags="preview_rect"
+                    )
+                
+                # If the user clicks on rectangle with circle, this means we're adjusting it
+                # We'll identify this in mouse_up
             
             # If in placement mode, create the rectangle immediately with fixed size
             if self.rect_placement_mode and not self.multiple_rectangles:
@@ -329,60 +384,6 @@ class RectangleDrawingApp:
                     self.start_x + canvas_width, self.start_y + canvas_height,
                     outline="red", width=2, tags="rect"
                 )
-            elif self.multi_rect_placement_mode and self.current_img_idx != 0:
-                # For multiple rectangles mode - draw all rectangles relative to first one
-                self._draw_multi_placement_preview(event.x, event.y)
-    
-    def _draw_multi_placement_preview(self, x, y):
-        """Draw all rectangles for multi-rectangle placement mode"""
-        if not self.multiple_rectangles or not self.multi_rect_placement_mode:
-            return
-            
-        self.canvas.delete("rect")
-        
-        # Get the original rectangles (from source 0)
-        if not self.rectangles[0] or len(self.rectangles[0]) == 0:
-            return
-            
-        # Assuming the mouse position is the top-left corner of the first rectangle
-        dx = x - self.img_x_offset
-        dy = y - self.img_y_offset
-        
-        # Convert to original image coordinates
-        base_x = int(dx / self.scale_factor)
-        base_y = int(dy / self.scale_factor)
-        
-        # Draw each rectangle with its offset from the first one
-        for i, offset in enumerate(self.rect_offsets):
-            dx1, dy1, dx2, dy2 = offset
-            orig_rect = self.rectangles[0][i]
-            width = orig_rect[2] - orig_rect[0]
-            height = orig_rect[3] - orig_rect[1]
-            
-            # Calculate new rectangle coordinates
-            x1 = base_x + dx1
-            y1 = base_y + dy1
-            x2 = x1 + width
-            y2 = y1 + height
-            
-            # Ensure coordinates are within image boundaries
-            img_h, img_w = self.current_img_rgb.shape[:2]
-            x1 = max(0, min(x1, img_w - 1))
-            y1 = max(0, min(y1, img_h - 1))
-            x2 = max(0, min(x2, img_w - 1))
-            y2 = max(0, min(y2, img_h - 1))
-            
-            # Convert back to canvas coordinates
-            canvas_x1 = int(x1 * self.scale_factor) + self.img_x_offset
-            canvas_y1 = int(y1 * self.scale_factor) + self.img_y_offset
-            canvas_x2 = int(x2 * self.scale_factor) + self.img_x_offset
-            canvas_y2 = int(y2 * self.scale_factor) + self.img_y_offset
-            
-            # Draw the rectangle
-            self.canvas.create_rectangle(
-                canvas_x1, canvas_y1, canvas_x2, canvas_y2,
-                outline="red", width=2, tags="rect"
-            )
     
     def on_mouse_move(self, event):
         if self.pixels_extracted:
@@ -392,8 +393,26 @@ class RectangleDrawingApp:
             # Different handling for multiple rectangle mode
             if self.multiple_rectangles:
                 if self.multi_rect_placement_mode and self.current_img_idx != 0:
-                    # For multi-rectangle placement mode, preview all rectangles
-                    self._draw_multi_placement_preview(event.x, event.y)
+                    # For improved positioning, update the preview rectangle
+                    if not self.is_rectangle_placed:
+                        orig_rect = self.rectangles[0][self.current_rect_idx]
+                        width = orig_rect[2] - orig_rect[0]
+                        height = orig_rect[3] - orig_rect[1]
+                        
+                        # Convert to canvas coordinates
+                        canvas_width = int(width * self.scale_factor)
+                        canvas_height = int(height * self.scale_factor)
+                        
+                        # Center at mouse position
+                        half_width = canvas_width // 2
+                        half_height = canvas_height // 2
+                        
+                        self.canvas.delete("preview_rect")
+                        self.canvas.create_rectangle(
+                            event.x - half_width, event.y - half_height,
+                            event.x + half_width, event.y + half_height,
+                            outline="blue", width=2, tags="preview_rect"
+                        )
                 else:
                     # For drawing new rectangles on source 0
                     self.canvas.delete("preview_rect")
@@ -437,8 +456,8 @@ class RectangleDrawingApp:
             # Handle multiple rectangle mode
             if self.multiple_rectangles:
                 if self.multi_rect_placement_mode and self.current_img_idx != 0:
-                    # For multi-rectangle placement mode, save all rectangle positions
-                    self._save_multi_placement_rectangles(event.x, event.y)
+                    # For improved positioning, handle the rectangle placement
+                    self._handle_rectangle_placement(event.x, event.y)
                 else:
                     # For drawing new rectangles on source 0
                     self._save_new_rectangle(event.x, event.y)
@@ -567,6 +586,239 @@ class RectangleDrawingApp:
                 if all_drawn and not self.pixels_extracted:
                     self.status_var.set("All rectangles placed. You can now select different sources to adjust positions if needed, or extract pixels.")
     
+    def _handle_rectangle_placement(self, event_x, event_y):
+        """Handle rectangle placement for the improved rectangle positioning system"""
+        self.canvas.delete("preview_rect")
+        
+        # Get the original rectangle from source 0
+        if self.current_rect_idx >= len(self.rectangles[0]):
+            return
+            
+        orig_rect = self.rectangles[0][self.current_rect_idx]
+        width = orig_rect[2] - orig_rect[0]
+        height = orig_rect[3] - orig_rect[1]
+        
+        # Convert mouse position to image coordinates
+        mx = event_x - self.img_x_offset
+        my = event_y - self.img_y_offset
+        
+        img_x = int(mx / self.scale_factor)
+        img_y = int(my / self.scale_factor)
+        
+        # Calculate rectangle coordinates centered at mouse position
+        half_width = width / 2
+        half_height = height / 2
+        
+        x1 = img_x - half_width
+        y1 = img_y - half_height
+        x2 = img_x + half_width
+        y2 = img_y + half_height
+        
+        # Ensure coordinates are within image boundaries
+        img_h, img_w = self.current_img_rgb.shape[:2]
+        x1 = max(0, min(x1, img_w - 1))
+        y1 = max(0, min(y1, img_h - 1))
+        x2 = max(0, min(x2, img_w - 1))
+        y2 = max(0, min(y2, img_h - 1))
+        
+        # Convert coordinates to integers for slice indexing
+        x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
+        
+        # Add to adjusted rectangles
+        if self.current_rect_idx < len(self.adjusted_rectangles[self.current_img_idx]):
+            # Update existing one
+            self.adjusted_rectangles[self.current_img_idx][self.current_rect_idx] = (x1, y1, x2, y2)
+        else:
+            # Add new one
+            self.adjusted_rectangles[self.current_img_idx].append((x1, y1, x2, y2))
+        
+        # Also update the main rectangles for this source
+        if self.current_rect_idx < len(self.rectangles[self.current_img_idx]):
+            # Update existing
+            self.rectangles[self.current_img_idx][self.current_rect_idx] = (x1, y1, x2, y2)
+        else:
+            # Add new
+            self.rectangles[self.current_img_idx].append((x1, y1, x2, y2))
+        
+        # Calculate and show the next rectangle if we have more than one
+        self.is_rectangle_placed = True
+        self.placing_first_rectangle = False
+        
+        # This is critical: force the Next Source button to be visible after placing the first rectangle
+        # BUT NEVER show it for Negative Source 2
+        if len(self.adjusted_rectangles[self.current_img_idx]) == 1 and self.current_img_idx != 2:
+            if hasattr(self, 'next_source_btn'):
+                self.next_source_btn.pack(side=tk.LEFT, padx=5)
+        
+        # For Negative 2, make sure the Extract Pixels button is visible as soon as one rectangle is placed
+        if self.current_img_idx == 2 and not self.pixels_extracted:
+            # Show the Extract Pixels button
+            if hasattr(self, 'extract_pixels_btn'):
+                self.extract_pixels_btn.pack(side=tk.LEFT, padx=5)
+        
+        # If we have at least one rectangle placed, compute transformation and preview next ones
+        if len(self.adjusted_rectangles[self.current_img_idx]) >= 1:
+            # Compute transformation for showing the next rectangle
+            self._compute_and_apply_transformation(self.current_img_idx)
+            
+            # Increment to next rectangle if there are more to place
+            if len(self.adjusted_rectangles[self.current_img_idx]) < len(self.rectangles[0]):
+                self.current_rect_idx = len(self.adjusted_rectangles[self.current_img_idx])
+                self.is_rectangle_placed = False
+                
+                # Show guidance message for next rectangle
+                next_rect_idx = self.current_rect_idx + 1
+                
+                # Different guidance message for Negative Source 2
+                if self.current_img_idx == 2:
+                    self.status_var.set(f"Positioned rectangle {self.current_rect_idx + 1} of {len(self.rectangles[0])}. "
+                                       f"The blue rectangle shows the calculated position for rectangle {next_rect_idx}. "
+                                       f"Adjust its position if needed or press 'Next' to extract pixels when finished.")
+                else:
+                    self.status_var.set(f"Positioned rectangle {self.current_rect_idx + 1} of {len(self.rectangles[0])}. "
+                                       f"The blue rectangle shows the calculated position for rectangle {next_rect_idx}. "
+                                       f"Adjust its position if needed or press 'Next Source' to accept all calculated positions.")
+                
+                # Draw preview of the next rectangle if available
+                if self.current_rect_idx < len(self.rectangles[self.current_img_idx]):
+                    next_rect = self.rectangles[self.current_img_idx][self.current_rect_idx]
+                    x1, y1, x2, y2 = next_rect
+                    
+                    # Convert to canvas coordinates
+                    canvas_x1 = int(x1 * self.scale_factor) + self.img_x_offset
+                    canvas_y1 = int(y1 * self.scale_factor) + self.img_y_offset
+                    canvas_x2 = int(x2 * self.scale_factor) + self.img_x_offset
+                    canvas_y2 = int(y2 * self.scale_factor) + self.img_y_offset
+                    
+                    # Draw the preview rectangle
+                    self.canvas.create_rectangle(
+                        canvas_x1, canvas_y1, canvas_x2, canvas_y2,
+                        outline="blue", width=2, tags="preview_rect"
+                    )
+                    
+                    # Add a circle in the center to indicate it's the next one to position
+                    center_x = (canvas_x1 + canvas_x2) / 2
+                    center_y = (canvas_y1 + canvas_y2) / 2
+                    circle_radius = 5
+                    self.canvas.create_oval(
+                        center_x - circle_radius, center_y - circle_radius,
+                        center_x + circle_radius, center_y + circle_radius,
+                        fill="blue", outline="white", tags="preview_rect"
+                    )
+            else:
+                # All rectangles positioned
+                if self.current_img_idx == 2:
+                    self.status_var.set(f"All rectangles positioned. Press 'Next' to extract pixels.")
+                else:
+                    self.status_var.set(f"All rectangles positioned. Press 'Next Source' to continue.")
+        else:
+            # Just the first rectangle placed
+            self.current_rect_idx = len(self.adjusted_rectangles[self.current_img_idx])
+            self.is_rectangle_placed = False
+            
+            # If there are more rectangles to place
+            if self.current_rect_idx < len(self.rectangles[0]):
+                # Calculate and show preview of the next rectangle
+                if len(self.adjusted_rectangles[self.current_img_idx]) == 1:
+                    # With just one rectangle, we only have translation (no scaling yet)
+                    # Use the expected position from DA plus the translation
+                    expected_x, expected_y = self.expected_positions[self.current_img_idx][0]
+                    x1, y1, x2, y2 = self.adjusted_rectangles[self.current_img_idx][0]
+                    placed_x = (x1 + x2) / 2
+                    placed_y = (y1 + y2) / 2
+                    
+                    dx = placed_x - expected_x
+                    dy = placed_y - expected_y
+                    
+                    # Preview the position of the next rectangle
+                    if self.current_rect_idx < len(self.rectangles[0]):
+                        # Get the expected position of the next rectangle from DA
+                        orig_rect = self.rectangles[0][self.current_rect_idx]
+                        nx1, ny1, nx2, ny2 = orig_rect
+                        
+                        # Get center point and dimensions of the original rectangle
+                        orig_center_x = (nx1 + nx2) / 2
+                        orig_center_y = (ny1 + ny2) / 2
+                        orig_width = nx2 - nx1
+                        orig_height = ny2 - ny1
+                        
+                        # Apply translation to center (no scaling)
+                        new_center_x = orig_center_x + dx
+                        new_center_y = orig_center_y + dy
+                        
+                        # Calculate new corners using original width and height
+                        nx1 = new_center_x - orig_width / 2
+                        ny1 = new_center_y - orig_height / 2
+                        nx2 = new_center_x + orig_width / 2
+                        ny2 = new_center_y + orig_height / 2
+                        
+                        # Ensure coordinates are within image boundaries
+                        nx1 = max(0, min(nx1, img_w - 1))
+                        ny1 = max(0, min(ny1, img_h - 1))
+                        nx2 = max(0, min(nx2, img_w - 1))
+                        ny2 = max(0, min(ny2, img_h - 1))
+                        
+                        # Convert to integers for slice indexing
+                        nx1, ny1, nx2, ny2 = int(nx1), int(ny1), int(nx2), int(ny2)
+                        
+                        # Update the rectangle in the current source
+                        if self.current_rect_idx < len(self.rectangles[self.current_img_idx]):
+                            self.rectangles[self.current_img_idx][self.current_rect_idx] = (nx1, ny1, nx2, ny2)
+                        else:
+                            self.rectangles[self.current_img_idx].append((nx1, ny1, nx2, ny2))
+                        
+                        # Convert to canvas coordinates
+                        canvas_x1 = int(nx1 * self.scale_factor) + self.img_x_offset
+                        canvas_y1 = int(ny1 * self.scale_factor) + self.img_y_offset
+                        canvas_x2 = int(nx2 * self.scale_factor) + self.img_x_offset
+                        canvas_y2 = int(ny2 * self.scale_factor) + self.img_y_offset
+                        
+                        # Draw the preview rectangle
+                        self.canvas.create_rectangle(
+                            canvas_x1, canvas_y1, canvas_x2, canvas_y2,
+                            outline="blue", width=2, tags="preview_rect"
+                        )
+                        
+                        # Add a circle in the center to indicate it's the next one to position
+                        center_x = (canvas_x1 + canvas_x2) / 2
+                        center_y = (canvas_y1 + canvas_y2) / 2
+                        circle_radius = 5
+                        self.canvas.create_oval(
+                            center_x - circle_radius, center_y - circle_radius,
+                            center_x + circle_radius, center_y + circle_radius,
+                            fill="blue", outline="white", tags="preview_rect"
+                        )
+                
+                # Different status message for Negative Source 2
+                if self.current_img_idx == 2:
+                    self.status_var.set(f"Positioned rectangle 1 of {len(self.rectangles[0])}. The blue rectangle shows the calculated position for rectangle 2. "
+                                       f"Adjust its position if needed or press 'Next' to extract pixels when finished.")
+                else:
+                    self.status_var.set(f"Positioned rectangle 1 of {len(self.rectangles[0])}. The blue rectangle shows the calculated position for rectangle 2. "
+                                       f"Adjust its position if needed or press 'Next Source' to accept all calculated positions.")
+            else:
+                # All rectangles positioned
+                if self.current_img_idx == 2:
+                    self.status_var.set(f"All rectangles positioned. Press 'Next' to extract pixels.")
+                else:
+                    self.status_var.set(f"All rectangles positioned. Press 'Next Source' to continue.")
+        
+        # Redraw the canvas to update all rectangles
+        load_current_image(self)
+        
+        # Make sure Next Source button is visible after placing any rectangle
+        # BUT NEVER for Negative Source 2
+        if len(self.adjusted_rectangles[self.current_img_idx]) > 0 and not self.pixels_extracted and self.current_img_idx != 2:
+            if hasattr(self, 'next_source_btn'):
+                self.next_source_btn.pack(side=tk.LEFT, padx=5)
+        elif self.current_img_idx == 2:
+            # Always hide the Next Source button when on Negative Source 2
+            if hasattr(self, 'next_source_btn'):
+                self.next_source_btn.pack_forget()
+        
+        # Update the UI state to ensure Extract Pixels button is shown when needed
+        self.update_ui_state()
+    
     def _save_new_rectangle(self, event_x, event_y):
         """Save a new rectangle when drawing in multiple rectangle mode on source 0"""
         self.canvas.delete("preview_rect")
@@ -597,6 +849,9 @@ class RectangleDrawingApp:
         orig_x2 = max(0, min(orig_x2, img_w - 1))
         orig_y2 = max(0, min(orig_y2, img_h - 1))
         
+        # Ensure we have integer coordinates
+        orig_x1, orig_y1, orig_x2, orig_y2 = int(orig_x1), int(orig_y1), int(orig_x2), int(orig_y2)
+        
         # Add the new rectangle to the list
         self.rectangles[0].append((orig_x1, orig_y1, orig_x2, orig_y2))
         
@@ -613,54 +868,8 @@ class RectangleDrawingApp:
     
     def _save_multi_placement_rectangles(self, event_x, event_y):
         """Save all rectangle positions when placing multiple rectangles on sources 1 and 2"""
-        self.canvas.delete("rect")
-        
-        # Get the original rectangles (from source 0)
-        if not self.rectangles[0] or len(self.rectangles[0]) == 0:
-            return
-            
-        # Calculate the base position from the mouse position
-        dx = event_x - self.img_x_offset
-        dy = event_y - self.img_y_offset
-        
-        # Convert to original image coordinates
-        base_x = int(dx / self.scale_factor)
-        base_y = int(dy / self.scale_factor)
-        
-        # Create new rectangles for the current source
-        new_rects = []
-        img_h, img_w = self.current_img_rgb.shape[:2]
-        
-        for i, offset in enumerate(self.rect_offsets):
-            dx1, dy1, dx2, dy2 = offset
-            
-            # Calculate new rectangle coordinates
-            orig_rect = self.rectangles[0][i]
-            width = orig_rect[2] - orig_rect[0]
-            height = orig_rect[3] - orig_rect[1]
-            
-            x1 = base_x + dx1
-            y1 = base_y + dy1
-            x2 = x1 + width
-            y2 = y1 + height
-            
-            # Ensure coordinates are within image boundaries
-            x1 = max(0, min(x1, img_w - 1))
-            y1 = max(0, min(y1, img_h - 1))
-            x2 = max(0, min(x2, img_w - 1))
-            y2 = max(0, min(y2, img_h - 1))
-            
-            new_rects.append((x1, y1, x2, y2))
-        
-        # Update the rectangles for this source
-        self.rectangles[self.current_img_idx] = new_rects
-        
-        # Redraw the rectangles
-        self._draw_multiple_rectangles()
-        
-        self.status_var.set(f"Positioned {len(new_rects)} rectangles on {self.source_var.get()}")
-        
-        self.update_ui_state()
+        # This method is deprecated and replaced by _handle_rectangle_placement
+        pass
     
     def clear_rectangle(self):
         """Clear all rectangles and reset the workflow"""
@@ -718,6 +927,12 @@ class RectangleDrawingApp:
         """Extract pixels and automatically save to the specified data processing file"""
         success = process_and_save_data(self)
         
+        if not success:
+            # If extraction failed, don't update UI state or clear rectangles
+            self.status_var.set(f"Error extracting pixels. Please check the console for details.")
+            return
+        
+        # Only continue if extraction was successful
         self.pixels_extracted = True
         
         # Skip displaying visualizations in data processing mode
@@ -730,7 +945,7 @@ class RectangleDrawingApp:
         self.status_var.set(f"Data processed and saved to {self.data_processing_path}. Press 'Clear Rectangle' to process another region.")
         
         # Automatically clear the rectangle in data processing mode
-        if hasattr(self, 'data_processing_path') and self.data_processing_path and success:
+        if hasattr(self, 'data_processing_path') and self.data_processing_path:
             self.clear_rectangle()
     
     def save_results(self):
@@ -831,22 +1046,25 @@ class RectangleDrawingApp:
             if not self.rectangles[0] or len(self.rectangles[0]) == 0:
                 self.status_var.set("Please draw at least one rectangle before moving to the next source.")
                 return
-                
-            # Store the rectangle sizes and calculate offsets for relative placement
-            # We'll use the first rectangle as the reference point
-            if not self.rect_offsets and len(self.rectangles[0]) > 0:
-                first_rect = self.rectangles[0][0]
-                self.rect_offsets = []
-                for rect in self.rectangles[0]:
-                    # Calculate offset from the first rectangle
-                    x1, y1, x2, y2 = rect
-                    fx1, fy1, fx2, fy2 = first_rect
-                    offset = (x1 - fx1, y1 - fy1, x2 - fx1, y2 - fy1)
-                    self.rect_offsets.append(offset)
+            
+            # Store the rectangle center points for expected positions
+            # We'll use these to calculate the transformation between DA and negative sources
+            self.expected_positions[1] = []
+            for rect in self.rectangles[0]:
+                x1, y1, x2, y2 = rect
+                center_x = (x1 + x2) / 2
+                center_y = (y1 + y2) / 2
+                self.expected_positions[1].append((center_x, center_y))
             
             # Mark that we've drawn all rectangles on DA
             self.all_rects_drawn_on_da = True
             self.multi_rect_placement_mode = True
+            self.placing_first_rectangle = True
+            self.current_rect_idx = 0
+            self.is_rectangle_placed = False
+            
+            # Reset adjusted rectangles for this source
+            self.adjusted_rectangles[1] = []
             
             # Switch to Negative 1
             self.current_img_idx = 1
@@ -854,40 +1072,178 @@ class RectangleDrawingApp:
             
             # Load the image before setting status
             load_current_image(self)
-            self.status_var.set(f"Position all {len(self.rectangles[0])} rectangles on Negative 1 with one mouse drag")
+            self.status_var.set(f"Position the first rectangle on Negative 1. This will calibrate the scale factor.")
             
         # If we're on Negative 1
         elif current_source == "Negative 1":
-            # Check if we have positioned the rectangles
-            if not self.rectangles[1] or len(self.rectangles[1]) == 0:
-                self.status_var.set("Please position the rectangles before moving to the next source.")
+            # Check if we have positioned at least one rectangle
+            if len(self.adjusted_rectangles[1]) == 0:
+                self.status_var.set("Please position at least the first rectangle before moving to the next source.")
                 return
+                
+            # For Negative Source 2, we still want to use Digital (DA) as the reference
+            # This ensures we have a consistent transformation from the original
+            self.expected_positions[2] = []
+            for rect in self.rectangles[0]:
+                x1, y1, x2, y2 = rect
+                center_x = (x1 + x2) / 2
+                center_y = (y1 + y2) / 2
+                self.expected_positions[2].append((center_x, center_y))
+                    
+            # Reset for source 2
+            self.placing_first_rectangle = True
+            self.current_rect_idx = 0
+            self.is_rectangle_placed = False
+            
+            # Reset adjusted rectangles for source 2
+            self.adjusted_rectangles[2] = []
                 
             # Switch to Negative 2
             self.current_img_idx = 2
             self.source_var.set("Negative 2")
             
+            # Explicitly hide the Next Source button when switching to Negative 2
+            if hasattr(self, 'next_source_btn'):
+                self.next_source_btn.pack_forget()
+            
             # Load the image before setting status
             load_current_image(self)
-            self.status_var.set(f"Position all {len(self.rectangles[0])} rectangles on Negative 2 with one mouse drag")
+            self.status_var.set(f"Position the first rectangle on Negative 2. This will calibrate the scale factor. When finished, press 'Next' to extract pixels.")
             
         # If we're on Negative 2
         elif current_source == "Negative 2":
-            # Check if we've positioned the rectangles on all sources
-            all_positioned = (len(self.rectangles[0]) > 0 and 
-                              len(self.rectangles[1]) > 0 and 
-                              len(self.rectangles[2]) > 0)
-            
-            if not all_positioned:
-                self.status_var.set("Please position the rectangles on all sources.")
+            # Check if we've positioned at least the first rectangle on all sources
+            if len(self.adjusted_rectangles[2]) == 0:
+                self.status_var.set("Please position at least the first rectangle before finalizing.")
                 return
                 
             # This means we're done with placing rectangles
             self.all_rectangles_drawn = True
-            self.status_var.set("All rectangles positioned on all sources. You can now extract pixels or adjust positions if needed.")
+            
+            # Finalize all rectangles for source 1 if not all were manually placed
+            if len(self.adjusted_rectangles[1]) < len(self.rectangles[0]):
+                self._compute_and_apply_transformation(1)
+                
+            # Finalize all rectangles for source 2 if not all were manually placed
+            if len(self.adjusted_rectangles[2]) < len(self.rectangles[0]):
+                self._compute_and_apply_transformation(2)
+                
+            self.status_var.set("All rectangles positioned on all sources. You can now press 'Next' to extract pixels.")
         
+        # Update UI state
         self.update_ui_state()
-
+        
+        # Force Next Source button visibility if we're on Negative 1 with at least one rectangle placed
+        # (Don't apply for Negative 2)
+        if current_source == "Digital (DA)" and hasattr(self, 'adjusted_rectangles') and 1 in self.adjusted_rectangles:
+            if hasattr(self, 'next_source_btn'):
+                self.next_source_btn.pack(side=tk.LEFT, padx=5)
+                
+        # Make sure the Extract Pixels button is shown when on Negative 2 and 
+        # at least one rectangle is positioned
+        if self.current_img_idx == 2 and len(self.rectangles[2]) > 0 and not self.pixels_extracted:
+            if hasattr(self, 'extract_pixels_btn'):
+                self.extract_pixels_btn.pack(side=tk.LEFT, padx=5)
+    
+    def _compute_and_apply_transformation(self, source_idx):
+        """Compute and apply transformation from expected to adjusted positions"""
+        if len(self.adjusted_rectangles[source_idx]) < 1:
+            return
+            
+        # Get expected and actual centers for the rectangles that have been adjusted
+        expected_centers = []
+        actual_centers = []
+        
+        for i, rect in enumerate(self.adjusted_rectangles[source_idx]):
+            if i < len(self.expected_positions[source_idx]):
+                expected_x, expected_y = self.expected_positions[source_idx][i]
+                
+                x1, y1, x2, y2 = rect
+                actual_x = (x1 + x2) / 2
+                actual_y = (y1 + y2) / 2
+                
+                expected_centers.append((expected_x, expected_y))
+                actual_centers.append((actual_x, actual_y))
+        
+        # Calculate transformation using polynomial fit if we have enough points
+        if len(expected_centers) >= 1:
+            # For one point, just use translation
+            if len(expected_centers) == 1:
+                dx = actual_centers[0][0] - expected_centers[0][0]
+                dy = actual_centers[0][1] - expected_centers[0][1]
+                sx, sy = 1.0, 1.0  # No scaling with just one point
+            else:
+                # For multiple points, use np.polyfit to get a degree 1 fit (scale + translation)
+                expected_x = [p[0] for p in expected_centers]
+                expected_y = [p[1] for p in expected_centers]
+                actual_x = [p[0] for p in actual_centers]
+                actual_y = [p[1] for p in actual_centers]
+                
+                try:
+                    # x = ax + b
+                    x_coeffs = np.polyfit(expected_x, actual_x, 1)
+                    sx, dx = x_coeffs[0], x_coeffs[1]
+                    
+                    # y = cy + d
+                    y_coeffs = np.polyfit(expected_y, actual_y, 1)
+                    sy, dy = y_coeffs[0], y_coeffs[1]
+                except Exception as e:
+                    print(f"Error in polyfit: {str(e)}")
+                    # Fallback to simple translation if polyfit fails
+                    dx = actual_centers[0][0] - expected_centers[0][0]
+                    dy = actual_centers[0][1] - expected_centers[0][1]
+                    sx, sy = 1.0, 1.0
+            
+            # Store the transformation
+            self.scale_factors[source_idx] = (sx, sy)
+            self.translations[source_idx] = (dx, dy)
+            
+            print(f"Transformation for source {source_idx}: Scale={sx:.3f}, {sy:.3f}, Translation={dx:.1f}, {dy:.1f}")
+            
+            # Apply transformation to all rectangles from DA to create the full set for this source
+            transformed_rects = []
+            for i, rect in enumerate(self.rectangles[0]):
+                if i < len(self.adjusted_rectangles[source_idx]):
+                    # Keep manually positioned rectangles
+                    # Convert to integers to ensure they work as slice indices
+                    x1, y1, x2, y2 = self.adjusted_rectangles[source_idx][i]
+                    transformed_rects.append((int(x1), int(y1), int(x2), int(y2)))
+                else:
+                    # Transform remaining rectangles
+                    x1, y1, x2, y2 = rect
+                    
+                    # Transform centers only, preserving original rectangle size
+                    center_x = (x1 + x2) / 2
+                    center_y = (y1 + y2) / 2
+                    new_center_x = center_x * sx + dx
+                    new_center_y = center_y * sy + dy
+                    
+                    # Preserve original width and height
+                    width = x2 - x1
+                    height = y2 - y1
+                    
+                    # Calculate new corners
+                    new_x1 = new_center_x - width / 2
+                    new_y1 = new_center_y - height / 2
+                    new_x2 = new_center_x + width / 2
+                    new_y2 = new_center_y + height / 2
+                    
+                    # Ensure coordinates are within image boundaries
+                    img_h, img_w = self.current_img_rgb.shape[:2]
+                    new_x1 = max(0, min(new_x1, img_w - 1))
+                    new_y1 = max(0, min(new_y1, img_h - 1))
+                    new_x2 = max(0, min(new_x2, img_w - 1))
+                    new_y2 = max(0, min(new_y2, img_h - 1))
+                    
+                    # Convert to integers for slice indexing
+                    transformed_rects.append((int(new_x1), int(new_y1), int(new_x2), int(new_y2)))
+            
+            # Update the rectangles for this source
+            self.rectangles[source_idx] = transformed_rects
+            
+            # Redraw
+            load_current_image(self)
+    
     def _draw_multiple_rectangles(self):
         """Helper method to draw all rectangles for the current source in multiple rectangle mode"""
         if not self.multiple_rectangles:

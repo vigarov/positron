@@ -119,13 +119,39 @@ def load_current_image(app):
         if hasattr(app, 'multiple_rectangles') and app.multiple_rectangles:
             # For multiple rectangles mode, redraw all rectangles
             if app.rectangles[app.current_img_idx] and len(app.rectangles[app.current_img_idx]) > 0:
-                for rect in app.rectangles[app.current_img_idx]:
+                for i, rect in enumerate(app.rectangles[app.current_img_idx]):
                     x1, y1, x2, y2 = rect
                     x1 = int(x1 * app.scale_factor) + app.img_x_offset
                     y1 = int(y1 * app.scale_factor) + app.img_y_offset
                     x2 = int(x2 * app.scale_factor) + app.img_x_offset
                     y2 = int(y2 * app.scale_factor) + app.img_y_offset
-                    app.canvas.create_rectangle(x1, y1, x2, y2, outline="red", width=2, tags="rect")
+                    
+                    # Determine color based on whether it's been adjusted
+                    if (hasattr(app, 'adjusted_rectangles') and
+                        app.current_img_idx in app.adjusted_rectangles and
+                        i < len(app.adjusted_rectangles[app.current_img_idx])):
+                        # This rectangle has been adjusted by the user - draw in red
+                        color = "red"
+                    elif (hasattr(app, 'current_rect_idx') and
+                          i == app.current_rect_idx and
+                          not app.is_rectangle_placed):
+                        # This is the current rectangle being positioned - draw in blue
+                        color = "blue"
+                        
+                        # Draw a circle in the center to indicate it's the next one to position
+                        center_x = (x1 + x2) / 2
+                        center_y = (y1 + y2) / 2
+                        circle_radius = 5
+                        app.canvas.create_oval(
+                            center_x - circle_radius, center_y - circle_radius,
+                            center_x + circle_radius, center_y + circle_radius,
+                            fill="blue", outline="white", tags="rect"
+                        )
+                    else:
+                        # This rectangle is calculated based on transformation - draw in blue
+                        color = "blue"
+                    
+                    app.canvas.create_rectangle(x1, y1, x2, y2, outline=color, width=2, tags="rect")
         else:
             # For single rectangle mode
             if app.rectangles[app.current_img_idx] is not None:

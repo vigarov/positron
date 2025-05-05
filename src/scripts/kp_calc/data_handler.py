@@ -64,12 +64,12 @@ def _extract_pixel_data(app, show_visualizations=True):
                     rect = app.rectangles[src_idx][rect_idx]
                     x1, y1, x2, y2 = rect
                     
-                    # Ensure boundaries are within image
+                    # Ensure boundaries are within image and convert to integers
                     img_h, img_w = img_rgb.shape[:2]
-                    x1 = max(0, min(x1, img_w-1))
-                    y1 = max(0, min(y1, img_h-1))
-                    x2 = max(0, min(x2, img_w-1))
-                    y2 = max(0, min(y2, img_h-1))
+                    x1 = int(max(0, min(x1, img_w-1)))
+                    y1 = int(max(0, min(y1, img_h-1)))
+                    x2 = int(max(0, min(x2, img_w-1)))
+                    y2 = int(max(0, min(y2, img_h-1)))
                     
                     # Check if ROI is valid
                     if x1 >= x2 or y1 >= y2:
@@ -195,12 +195,12 @@ def _extract_pixel_data(app, show_visualizations=True):
                 # Extract rectangle region
                 x1, y1, x2, y2 = rect
                 
-                # Ensure boundaries are within image
+                # Ensure boundaries are within image and convert to integers
                 img_h, img_w = img_rgb.shape[:2]
-                x1 = max(0, min(x1, img_w-1))
-                y1 = max(0, min(y1, img_h-1))
-                x2 = max(0, min(x2, img_w-1))
-                y2 = max(0, min(y2, img_h-1))
+                x1 = int(max(0, min(x1, img_w-1)))
+                y1 = int(max(0, min(y1, img_h-1)))
+                x2 = int(max(0, min(x2, img_w-1)))
+                y2 = int(max(0, min(y2, img_h-1)))
                 
                 # Check if ROI is valid
                 if x1 >= x2 or y1 >= y2:
@@ -370,6 +370,9 @@ def process_and_save_data(app):
         else:
             app.status_var.set(f"Data successfully appended to {app.data_processing_path}")
             print(f"Data for Image Set {app.current_set_id} appended to {app.data_processing_path}")
+        
+        # Automatically clear rectangles and reset workflow after saving
+        app.clear_rectangle()
         
         return True
         

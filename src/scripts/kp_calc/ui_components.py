@@ -43,9 +43,11 @@ def setup_ui(app):
     if app.multiple_rectangles:
         app.undo_rect_btn = ttk.Button(app.control_panel, text="Undo Previous", 
                                       command=app.undo_last_rectangle)
+        app.undo_rect_btn.pack(side=tk.LEFT, padx=5)
         
         app.next_source_btn = ttk.Button(app.control_panel, text="Next Source", 
                                         command=app.next_source)
+        app.next_source_btn.pack(side=tk.LEFT, padx=5)
     
     app.clear_rect_btn = ttk.Button(app.control_panel, text="Clear Rectangle", 
                                    command=app.clear_rectangle)
