@@ -71,9 +71,15 @@ def _extract_pixel_data(app, show_visualizations=True):
                     x2 = int(max(0, min(x2, img_w-1)))
                     y2 = int(max(0, min(y2, img_h-1)))
                     
-                    # Check if ROI is valid
-                    if x1 >= x2 or y1 >= y2:
-                        raise ValueError(f"Invalid ROI: ({x1},{y1}) to ({x2},{y2})")
+                    # Ensure ROI has at least 1 pixel width and height
+                    if x1 >= x2:
+                        original_x2 = x2
+                        x2 = min(x1 + 1, img_w-1)
+                        print(f"Warning: Adjusted zero-width ROI for {img_path}. x2 changed from {original_x2} to {x2}")
+                    if y1 >= y2:
+                        original_y2 = y2
+                        y2 = min(y1 + 1, img_h-1)
+                        print(f"Warning: Adjusted zero-height ROI for {img_path}. y2 changed from {original_y2} to {y2}")
                     
                     # Extract ROI
                     roi = img_rgb[y1:y2, x1:x2]
@@ -202,9 +208,15 @@ def _extract_pixel_data(app, show_visualizations=True):
                 x2 = int(max(0, min(x2, img_w-1)))
                 y2 = int(max(0, min(y2, img_h-1)))
                 
-                # Check if ROI is valid
-                if x1 >= x2 or y1 >= y2:
-                    raise ValueError(f"Invalid ROI: ({x1},{y1}) to ({x2},{y2})")
+                # Ensure ROI has at least 1 pixel width and height
+                if x1 >= x2:
+                    original_x2 = x2
+                    x2 = min(x1 + 1, img_w-1)
+                    print(f"Warning: Adjusted zero-width ROI for {img_path}. x2 changed from {original_x2} to {x2}")
+                if y1 >= y2:
+                    original_y2 = y2
+                    y2 = min(y1 + 1, img_h-1)
+                    print(f"Warning: Adjusted zero-height ROI for {img_path}. y2 changed from {original_y2} to {y2}")
                 
                 # Extract ROI
                 roi = img_rgb[y1:y2, x1:x2]
