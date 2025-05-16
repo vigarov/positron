@@ -5,7 +5,7 @@ import cv2
 from skimage import img_as_float, img_as_ubyte, exposure
 
 # Import utils from parent package
-from src.utils import apply_channel_scaling
+from ..utils import apply_channel_scaling
 
 class Color_Correction:
     """
