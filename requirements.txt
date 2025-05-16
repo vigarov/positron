@@ -8,3 +8,6 @@ opencv-contrib-python  # For advanced white balance algorithms
 tqdm
 pillow
 scikit-image
+pandas
+# torch install using https://pytorch.org/get-started/locally/ depending on your system
+scikit-learn
