@@ -1,3 +1,4 @@
-"""
-Processing module for image processing operations
-""" 
+from .sigmoid_correct import SigmoidCorrect
+
+__all__ = ["SigmoidCorrect"]
+

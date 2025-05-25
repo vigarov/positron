@@ -42,33 +42,23 @@ def create_subplot(fig, position, image, title, axis_off=True):
 def save_image(output_dir, base_name, method_name, img):
     output_path = os.path.join(output_dir, f"{base_name}_{method_name}.png")
     if np.issubdtype(img.dtype, np.floating):
-        # Ensure float images are in 0-1 range before saving
         img = np.clip(img, 0, 1)
     io.imsave(output_path, img)
     logger.info(f"Saved {method_name} result to {output_path}")
 
+# Applies all color correction algorithms to an image and displays the results
+# Parameters: img_path (Path to input image), output_dir (Directory to save processed images), save_results (Whether to save processed images)
 def apply_and_compare_algorithms(img_path, output_dir=None, save_results=False):
-    """
-    Applies all color correction algorithms to an image and displays the results.
-    
-    Parameters:
-    - img_path: Path to the input image
-    - output_dir: Directory to save processed images (if save_results is True)
-    - save_results: Whether to save the processed images
-    """
-    # Read the image (in RGB format)
     img = io.imread(img_path)
-    if img.shape[2] == 4:  # If image has alpha channel, remove it
+    if img.shape[2] == 4:
         img = img[:,:,:3]
     
-    # Apply color correction algorithms using the Color_Correction class
     hist_eq = Color_Correction(method='histogram_equalization')
     gamma_corr = Color_Correction(method='gamma_correction').set_params(gamma=0.8)
     
     hist_eq_result = hist_eq.apply(img)
     gamma_corr_result = gamma_corr.apply(img)
     
-    # Check the results for out-of-range values
     def check_result(name, result):
         if np.issubdtype(result.dtype, np.floating):
             min_val = np.min(result)
@@ -79,7 +69,6 @@ def apply_and_compare_algorithms(img_path, output_dir=None, save_results=False):
     check_result('histogram_equalization', hist_eq_result)
     check_result('gamma_correction', gamma_corr_result)
     
-    # Try to use OpenCV's tonemap if available
     has_tonemap = hasattr(cv2, 'createTonemapDrago')
     try:
         if has_tonemap:
@@ -94,7 +83,6 @@ def apply_and_compare_algorithms(img_path, output_dir=None, save_results=False):
         tonemap_result = img.copy()
         has_tonemap = False
     
-    # Create results dictionary for display and return
     results = {
         'original': img,
         'histogram_eq': hist_eq_result,
@@ -102,12 +90,10 @@ def apply_and_compare_algorithms(img_path, output_dir=None, save_results=False):
         'tonemap': tonemap_result
     }
     
-    # Display the results
     file_name = os.path.basename(img_path)
     fig = plt.figure(figsize=(16, 12))
     gs = gridspec.GridSpec(3, 3)
     
-    # Create subplots with helper function
     create_subplot(fig, gs[0, 0], img, 'Original')
     create_subplot(fig, gs[0, 1], hist_eq_result, 'Histogram Equalization')
     create_subplot(fig, gs[1, 0], gamma_corr_result, f'Gamma Correction (γ={gamma_corr.params["gamma_correction"]["gamma"]})')
@@ -119,7 +105,6 @@ def apply_and_compare_algorithms(img_path, output_dir=None, save_results=False):
     plt.suptitle(f"Color Correction Comparisons - {file_name}", fontsize=16)
     plt.subplots_adjust(top=0.93)
     
-    # Save the comparison figure if requested
     if save_results and output_dir:
         os.makedirs(output_dir, exist_ok=True)
         base_name = os.path.splitext(file_name)[0]
@@ -127,7 +112,6 @@ def apply_and_compare_algorithms(img_path, output_dir=None, save_results=False):
         plt.savefig(comparison_path)
         logger.info(f"Saved comparison figure to {comparison_path}")
         
-        # Save individual results
         for name, image in results.items():
             if name != 'tonemap' or has_tonemap:
                 save_image(output_dir, base_name, name, image)
@@ -136,30 +120,23 @@ def apply_and_compare_algorithms(img_path, output_dir=None, save_results=False):
     
     return results
 
+# Calculate metrics to quantitatively compare the different color correction algorithms
 def calculate_image_metrics(results):
-    """
-    Calculate metrics to quantitatively compare the different color correction algorithms.
-    """
     logger.debug("Calculating image metrics")
     metrics = {}
     
     for name, img in results.items():
-        # Convert to float for calculations
         img_float = img_as_float(img)
         
-        # Calculate contrast (standard deviation of luminance)
         luminance = 0.299 * img_float[:,:,0] + 0.587 * img_float[:,:,1] + 0.114 * img_float[:,:,2]
         contrast = np.std(luminance)
         
-        # Calculate average RGB values and saturation
         avg_rgb = np.mean(img_float, axis=(0, 1))
         
-        # Calculate color saturation (max - min across channels)
         max_val = np.max(img_float, axis=2)
         min_val = np.min(img_float, axis=2)
         saturation = np.mean(max_val - min_val)
         
-        # Store metrics
         metrics[name] = {
             'contrast': contrast,
             'avg_rgb': avg_rgb,
@@ -171,33 +148,27 @@ def calculate_image_metrics(results):
     
     return metrics
 
+# Plot metrics to visualize color correction effects
 def plot_metrics(metrics, title, output_path=None):
-    """
-    Plot metrics to visualize color correction effects.
-    """
     logger.debug(f"Plotting metrics: {title}")
     methods = list(metrics.keys())
     
-    # Extract the metrics to plot
     contrasts = [metrics[method]['contrast'] for method in methods]
     saturations = [metrics[method]['saturation'] for method in methods]
     brightnesses = [metrics[method]['brightness'] for method in methods]
     
     fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(10, 12))
     
-    # Plot contrast
     ax1.bar(methods, contrasts, color='skyblue')
     ax1.set_ylabel('Contrast')
     ax1.set_title('Contrast Comparison')
     ax1.set_xticklabels(methods, rotation=45, ha='right')
     
-    # Plot saturation
     ax2.bar(methods, saturations, color='salmon')
     ax2.set_ylabel('Saturation')
     ax2.set_title('Saturation Comparison')
     ax2.set_xticklabels(methods, rotation=45, ha='right')
     
-    # Plot brightness
     ax3.bar(methods, brightnesses, color='lightgreen')
     ax3.set_ylabel('Brightness')
     ax3.set_title('Brightness Comparison')
@@ -223,7 +194,6 @@ def main():
     
     args = parser.parse_args()
     
-    # Configure logging level based on args
     if args.debug:
         logger.setLevel(logging.DEBUG)
         console_handler.setLevel(logging.DEBUG)

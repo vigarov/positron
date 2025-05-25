@@ -48,3 +48,4 @@ data/baselines/
 data/datasets/
 # Model checkpoints (final model will be uploaded to drive)
 checkpoints
+outs/

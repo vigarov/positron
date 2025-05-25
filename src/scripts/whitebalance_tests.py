@@ -34,20 +34,8 @@ def warning_handler(message, category, filename, lineno, file=None, line=None):
 # Set our custom warning handler
 warnings.showwarning = warning_handler
 
+
 def create_subplot(fig, position, image, title, axis_off=True):
-    """
-    Helper function to create a subplot with an image.
-    
-    Parameters:
-    - fig: Figure or GridSpec to add subplot to
-    - position: Position tuple/index for subplot
-    - image: Image to display
-    - title: Title for the subplot
-    - axis_off: Whether to turn off axis
-    
-    Returns:
-    - Created axis
-    """
     ax = plt.subplot(position)
     
     # Check image range before passing to imshow
@@ -64,27 +52,16 @@ def create_subplot(fig, position, image, title, axis_off=True):
     return ax
 
 def save_image(output_dir, base_name, suffix, image):
-    """Helper function to save an image to a file"""
     path = os.path.join(output_dir, f"{base_name}_{suffix}.png")
     io.imsave(path, image)
     logger.info(f"Saved image to {path}")
     return path
 
 def apply_and_compare_algorithms(img_path, output_dir=None, save_results=False):
-    """
-    Applies all white balance algorithms to an image and displays the results.
-    
-    Parameters:
-    - img_path: Path to the input image
-    - output_dir: Directory to save processed images (if save_results is True)
-    - save_results: Whether to save the processed images
-    """
-    # Read the image (in RGB format)
     img = io.imread(img_path)
-    if img.shape[2] == 4:  # If image has alpha channel, remove it
+    if img.shape[2] == 4:
         img = img[:,:,:3]
     
-    # Apply white balance algorithms using the White_Balance class
     gray_world_wb = White_Balance(method='gray_world')
     white_patch_wb = White_Balance(method='white_patch')
     shades_of_gray_wb = White_Balance(method='shades_of_gray')
@@ -95,7 +72,6 @@ def apply_and_compare_algorithms(img_path, output_dir=None, save_results=False):
     shades_of_gray_result = shades_of_gray_wb.apply(img)
     retinex_result = retinex_wb.apply(img)
     
-    # Check the results for out-of-range values
     def check_result(name, result):
         if np.issubdtype(result.dtype, np.floating):
             min_val = np.min(result)
@@ -108,7 +84,6 @@ def apply_and_compare_algorithms(img_path, output_dir=None, save_results=False):
     check_result('shades_of_gray', shades_of_gray_result)
     check_result('retinex', retinex_result)
     
-    # Try to use OpenCV's white balance if available
     has_opencv_extra = hasattr(cv2, 'xphoto')
     try:
         if has_opencv_extra:
@@ -123,7 +98,6 @@ def apply_and_compare_algorithms(img_path, output_dir=None, save_results=False):
         opencv_result = img.copy()
         has_opencv_extra = False
     
-    # Create results dictionary for display and return
     results = {
         'original': img,
         'gray_world': gray_world_result,
@@ -133,12 +107,10 @@ def apply_and_compare_algorithms(img_path, output_dir=None, save_results=False):
         'opencv': opencv_result
     }
     
-    # Display the results
     file_name = os.path.basename(img_path)
     fig = plt.figure(figsize=(16, 12))
     gs = gridspec.GridSpec(2, 3)
     
-    # Create subplots with helper function
     create_subplot(fig, gs[0, 0], img, 'Original')
     create_subplot(fig, gs[0, 1], gray_world_result, 'Gray World')
     create_subplot(fig, gs[0, 2], white_patch_result, 'White Patch')
@@ -154,7 +126,6 @@ def apply_and_compare_algorithms(img_path, output_dir=None, save_results=False):
     plt.suptitle(f"White Balance Comparisons - {file_name}", fontsize=16)
     plt.subplots_adjust(top=0.93)
     
-    # Save the comparison figure if requested
     if save_results and output_dir:
         os.makedirs(output_dir, exist_ok=True)
         base_name = os.path.splitext(file_name)[0]
@@ -162,7 +133,6 @@ def apply_and_compare_algorithms(img_path, output_dir=None, save_results=False):
         plt.savefig(comparison_path)
         logger.info(f"Saved comparison figure to {comparison_path}")
         
-        # Save individual results
         for name, image in results.items():
             if name != 'opencv' or has_opencv_extra:
                 save_image(output_dir, base_name, name, image)
@@ -171,44 +141,35 @@ def apply_and_compare_algorithms(img_path, output_dir=None, save_results=False):
     
     return results
 
+# Calculate metrics to quantitatively compare the different white balance algorithms
 def calculate_color_metrics(results):
-    """
-    Calculate metrics to quantitatively compare the different white balance algorithms.
-    """
     logger.debug("Calculating color metrics")
     metrics = {}
     
     for name, img in results.items():
-        # Calculate average RGB values
         avg_rgb = np.mean(img_as_float(img), axis=(0, 1))
         
-        # Calculate standard deviation of RGB values (color variability)
         std_rgb = np.std(img_as_float(img), axis=(0, 1))
         
-        # Calculate average saturation (convert to HSV and take the S channel)
         img_hsv = color.rgb2hsv(img_as_float(img))
         avg_saturation = np.mean(img_hsv[:,:,1])
         
-        # Calculate average brightness
         avg_brightness = np.mean(img_as_float(img))
         
-        # Store metrics
         metrics[name] = {
             'avg_rgb': avg_rgb,
             'std_rgb': std_rgb,
             'avg_saturation': avg_saturation,
             'avg_brightness': avg_brightness,
-            'rgb_ratio': avg_rgb / np.mean(avg_rgb)  # How balanced the colors are
+            'rgb_ratio': avg_rgb / np.mean(avg_rgb)
         }
         
         logger.debug(f"Metrics for {name}: avg_rgb={avg_rgb}, rgb_ratio={metrics[name]['rgb_ratio']}")
     
     return metrics
 
+# Plot RGB ratios to visualize color balance
 def plot_rgb_ratios(metrics, title, output_path=None):
-    """
-    Plot RGB ratios to visualize color balance.
-    """
     logger.debug(f"Plotting RGB ratios: {title}")
     methods = list(metrics.keys())
     rgb_ratios = [metrics[method]['rgb_ratio'] for method in methods]
@@ -226,7 +187,7 @@ def plot_rgb_ratios(metrics, title, output_path=None):
     ax.set_xticks(x)
     ax.set_xticklabels(methods, rotation=45, ha='right')
     ax.legend()
-    ax.axhline(y=1.0, color='k', linestyle='--', alpha=0.3)  # Perfect balance line
+    ax.axhline(y=1.0, color='k', linestyle='--', alpha=0.3)
 
     plt.tight_layout()
     
@@ -246,7 +207,6 @@ def main():
     
     args = parser.parse_args()
     
-    # Configure logging level based on args
     if args.debug:
         logger.setLevel(logging.DEBUG)
         console_handler.setLevel(logging.DEBUG)

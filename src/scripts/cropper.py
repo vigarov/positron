@@ -75,7 +75,7 @@ def main():
     parser.add_argument('input_path', help='Path to TIFF file or directory containing TIFF files')
     parser.add_argument('--output', '-o', help='Output directory for cropped images (optional)')
     parser.add_argument('--reduction', '-r', type=float, default=0.07, 
-                       help='Width reduction factor (default: 0.07 = 7%)')
+                       help='Width reduction factor (default: 0.07 = 7%%)')
     
     args = parser.parse_args()
     

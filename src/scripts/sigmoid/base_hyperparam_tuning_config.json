@@ -1,0 +1,17 @@
+{
+    "constant_params": {
+        "map_to_z": 4,
+        "rotate_image": true,
+        "center_loc": 0.0,
+        "percentile_ref_lower": 1.0,
+        "percentile_ref_upper": 99.0,
+        "center_upper_percentile": 99.0,
+        "stretch_lower_percentile": 1.0,
+        "stretch_upper_percentile": 99.0
+    },
+    "variable_params": {
+        "wb_method": ["scale_to_green_mean", "percentile_reference_balance:percentile_ref_target_point=white", "percentile_reference_balance:percentile_ref_target_point=black"],
+        "correction_mode": ["center_mean", "stretch_percentiles"],
+        "lumi_factor": "linspace:-2.0,2.0,6"
+    }
+}

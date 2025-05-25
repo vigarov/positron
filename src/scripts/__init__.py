@@ -1,3 +1,1 @@
-"""
-Scripts for running various examples and tests
-""" 
+# Empty init just for module detection

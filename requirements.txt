@@ -11,3 +11,7 @@ scikit-image
 pandas
 # torch install using https://pytorch.org/get-started/locally/ depending on your system
 scikit-learn
+prettytable
+statsmodels
+PyPDF2
+imagecodecs
