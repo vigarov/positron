@@ -12,7 +12,6 @@ This repository contains the code surrounding the Computational Photography cour
 │   ├── prepro/            # Pre-processed images  
 │   ├── datasets/          # Training/validation datasets
 │   ├── checkpoints/       # Model checkpoints
-│   ├── baselines/         # Baseline comparison data
 │   └── reproduction/      # Reproduction assets
 ├── src/                   # Source code
 │   ├── nn/               # Machine Learning approach

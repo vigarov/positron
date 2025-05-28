@@ -8,13 +8,13 @@ As such, to recreate every aspect of the project, the *complete* directory struc
 
 ```
 data
-├───baselines           <-- The baselines used to compare our approach
+├── prepro              <-- The pre-processed version of the raw (see here for more info)
     ├───...
-├───prepro              <-- The pre-processed version of the raw (see here for more info)
+├── raw                 <-- The raw data from various of the camera captures (.RAF raws, and .HIF for the initial data acquisition comparison)
     ├───...
-├───raw                 <-- The raw data from various of the camera captures (.RAF raws, and .HIF for the initial data acquisition comparison)
-    ├───...
-└───reproduction        <-- Files used for reproduction of results (e.g.: darktable styles, presets)
+├── datasets/          # Training datasets
+├── checkpoints/       # Model checkpoints
+└── reproduction        <-- Files used for reproduction of results (e.g.: darktable styles, presets)
 ```
 
 The analog pictures have been captured at f/8, (film) ISO 400. The exposure time for the different pictures can be found in the table below.
