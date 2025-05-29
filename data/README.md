@@ -19,7 +19,39 @@ data
 
 The analog pictures have been captured at f/8, (film) ISO 400. The exposure time for the different pictures can be found in the table below.
 
-TABLE TODO
+| Filename | Exposure Time (s) | Scene Description
+|----------|---------------|---------------|
+| DSCF7039.tif | 1/30 |Color checkerboard under OPT illumination|
+| DSCF7040.tif | 1/30 |Color checkerboard under D65 illumination|
+| DSCF7041.tif | 1/30 |Color checkerboard under House illumination|
+| DSCF7042.tif | 1/30 |Color checkerboard under City illumination|
+| DSCF7044.tif | 1/30 |Noise test chart, back-illuminated|
+| DSCF7045.tif | 1/30 |Color gradient (color -> gray) chart, back-illuminated|
+| DSCF7048.tif | 1/30 |Color gradient (color -> white) chart, back-illuminated|
+| DSCF7051.tif | 1/30 |Scala stairs in the BC building (indoors, daytime) |
+| DSCF7054.tif | 1/500 |Houses amongst trees (outdoors, cloudy, daytime)|
+| DSCF7057.tif | 1/60 |Our TA and his bachelor student sitting on a hammack (outdoors, cloudy day, daytime)|
+| DSCF7060.tif | 1/125 | A red jacket on green grass (outdoors, cloudy, daytime)|
+| DSCF7063.tif | 1/500 | The red EPFL logo, with the Rolex Learning Center and mountains in the backround (outdoors, cloudy, daytime)|
+| DSCF7066.tif | 1/125 |A building with colored strips (outdoors, cloudy, daytime)|
+| DSCF7069.tif | 1/60 |Orange building outside of a window, viewed from inside (indoors; outdoors, cloudy, daytime)|
+| DSCF7072.tif | 1/2 |Eren on a green background (indoors)|
+| DSCF7075.tif | 1/2 |Victor on a green backgound (indoors)|
+| DSCF7143.tif | 1/300 |Grass and sky picture (outdoors, small cloud cover, daytime)|
+| DSCF7144.tif | 1/500 |The Pelican statue, with lake Leman in the background and grass in the foreground (outdoors, sunny, daytime, close to sunset)|
+| DSCF7145.tif | 1/2000 |Lake Leman with the sunset and trees (outdoors, sunny, sunset)|
+| DSCF7146.tif | 1/500 |Lausanne from afar, with Lake Leman in the foreground (outdoors, sunny, sunset)|
+| DSCF7147.tif | 1/125 |Tree branches (outdoors, sunny, sunset)|
+| DSCF7148.tif | 1/1000 |Coast, Lake Leman, and yellow sky (outdoors, sunny, peak sunset)|
+| DSCF7149.tif | 1/2000 |Beach coastline, Lake Leman, trees and yellow sky (outdoors, sunny, peak sunset)|
+| DSCF7150.tif | 1/60 |Garden with cherry trees (outdoors, sunny, end of sunset)|
+| DSCF7151.tif | 1/8 |Close-up of red, green and yellow-colored leaves on a fence  (outdoors, sunny, end of sunset)|
+| DSCF7152.tif & DSCF7153.tif | 1 |Red and Blue car (outdoors, dusk/beginning of night)|
+| DSCF7155.tif | 1/4 |Grafitis on a wall, with a brigth-red LED parking barrier (outdoors, nighttime)|
+| DSCF7160.tif | 1/60 |Bessières bridge with Lausanne cathedral in the background (outdoors, nighttime)|
+| DSCF7157.tif | 1 |Illuminated Lausanne cathedral (outdoors, nighttime)|
+| DSCF7156.tif | 0.5 |Place de la Riponne, with blue and red advertisement pannels (outdoors, nighttime)|
+| DSCF7159.tif | 1/8 |Lausanne metro at Flon, with colored columns (indoors, nighttime)|
 
 After taking an analog picture, the digital "baseline" was captured with the same settings (f-score, ISO, exposure time), matching the focus point as closely as possible. 
 
