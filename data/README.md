@@ -30,7 +30,7 @@ The analog pictures have been captured at f/8, (film) ISO 400. The exposure time
 | DSCF7048.tif | 1/30 |Color gradient (color -> white) chart, back-illuminated|
 | DSCF7051.tif | 1/30 |Scala stairs in the BC building (indoors, daytime) |
 | DSCF7054.tif | 1/500 |Houses amongst trees (outdoors, cloudy, daytime)|
-| DSCF7057.tif | 1/60 |Our TA and his bachelor student sitting on a hammack (outdoors, cloudy day, daytime)|
+| DSCF7057.tif | 1/60 | Zack and Kevan sitting on a hammack (outdoors, cloudy day, daytime)|
 | DSCF7060.tif | 1/125 | A red jacket on green grass (outdoors, cloudy, daytime)|
 | DSCF7063.tif | 1/500 | The red EPFL logo, with the Rolex Learning Center and mountains in the backround (outdoors, cloudy, daytime)|
 | DSCF7066.tif | 1/125 |A building with colored strips (outdoors, cloudy, daytime)|
